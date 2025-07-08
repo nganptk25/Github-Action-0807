@@ -1,0 +1,15 @@
+{
+  "orange": {
+    "expected_title": "OrangeHRM",
+    "expected_login_redirect": true,
+    "expected_login": true,
+    "username": "Admin",
+    "password": "admin123",
+    "failed_message": "Invalid credentials"
+  },
+  "google": {
+    "expected_title": "Google",
+    "expected_login_redirect": false,
+    "expected_login": false
+  }
+}

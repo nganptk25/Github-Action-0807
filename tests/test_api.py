@@ -1,60 +1,48 @@
 import pytest
-import requests
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
 
 from tests.test_setup import TestSetup
 
 
+@pytest.mark.usefixtures("pages_login")
 class TestApiLocation(TestSetup):
 
-    def setup_method(self):
-        self.driver.get(
-            "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login"
-        )
-        self.driver.implicitly_wait(5)
-        # Find the username, password fields, and submit button
-        try:
-            username_field = self.driver.find_element(By.NAME, "username")
-            password_field = self.driver.find_element(By.NAME, "password")
-            submit_button = self.driver.find_element(
-                By.XPATH, "//button[@type='submit']"
-            )
-        except NoSuchElementException:
-            raise Exception(
-                "One of the elements (username, password, or submit button) was not found."
-            )
-
-        username_field.send_keys("Admin")
-        password_field.send_keys("admin123")
-        submit_button.click()
-        self.driver.implicitly_wait(5)
-
-        for cookie in self.driver.get_cookies():
-            self.session.cookies.set(cookie["name"], cookie["value"])
-
     @pytest.mark.api
-    @pytest.mark.parametrize(
-        "loc_id, loc_name",
-        [
-            (5, "Texas R&D"),
-        ],
-    )
-    def test_api_locations(self, loc_id, loc_name):
-        response = self.session.get(
-            "https://opensource-demo.orangehrmlive.com/web/index.php/api/v2/dashboard/employees/locations"
+    def test_api_info(self):
+        personal_response = self.session.get(
+            "https://opensource-demo.orangehrmlive.com/web/index.php/api/v2/pim/employees/7/personal-details"
         )
 
         assert (
-            response.status_code == 200
-        ), f"Expected status code 200, but got {response.status_code}"
+            personal_response.status_code == 200
+        ), f"Expected status code 200, but got {personal_response.status_code}"
+
+        employee_response = self.session.get(
+            "https://opensource-demo.orangehrmlive.com/web/index.php/api/v2/pim/employees"
+        )
+
+        assert (
+            employee_response.status_code == 200
+        ), f"Expected status code 200, but got {personal_response.status_code}"
 
         try:
-            data = response.json()
-            locations = data.get("data", {})
-            locations_dict = {
-                data["location"]["id"]: data["location"]["name"] for data in locations
-            }
-            assert locations_dict[loc_id] == loc_name, "Location name does not match"
+            personal_data = personal_response.json()
+            employee_data = employee_response.json()
+
+            emp_number = personal_data.get("data", {}).get("empNumber")
+            last_name = personal_data.get("data", {}).get("lastName")
+            first_name = personal_data.get("data", {}).get("firstName")
+            employee_id = personal_data.get("data", {}).get("employeeId")
+
+            matched_data = None
+
+            for employee in employee_data.get("data", []):
+                if employee.get("empNumber") == emp_number:
+                    matched_data = employee
+                    break
+            
+            assert matched_data is not None, f"Can not find data match with empNum = {emp_number}"
+            assert last_name == matched_data.get("lastName")
+            assert first_name == matched_data.get("firstName")
+            assert employee_id == matched_data.get("employeeId")
         except ValueError:
             assert False, "Response body is not in JSON format"
